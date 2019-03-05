@@ -23,3 +23,7 @@ peer chaincode instantiate -o orderer.example.com:7050 --tls --cafile $ORDERER_C
 export TRANSFER=$(echo -n "{\"name\":\"transfer1\",\"description\":\"first transfer\",\"originator\":\"alice\",\"recipient\":\"bob\",\"authorization\":\"auth1\",\"address\":\"file-is-here\",\"encryptionKey\":\"secret\"}" | base64 | tr -d \\n)
 
 peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n fileTransfer -c '{"Args":["initFileTransfer"]}' --transient "{\"fileTransfer\":\"$TRANSFER\"}"
+
+## TODO
+1) Recipient accessing record leaves trace of having received data.
+2) Use public & private keys of participants to encrypt/decrypt files instead of explicitly including key in on-chain records.

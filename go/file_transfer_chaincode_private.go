@@ -1,25 +1,16 @@
 // ====CHAINCODE EXECUTION SAMPLES (CLI) ==================
 
-// ==== Invoke marbles, pass private data as base64 encoded bytes in transient map ====
+// ==== Invoke transfers, pass private data as base64 encoded bytes in transient map ====
 //
-// export MARBLE=$(echo -n "{\"name\":\"marble1\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\",\"price\":99}" | base64)
-// peer chaincode invoke -C mychannel -n marblesp -c '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
-//
-// export MARBLE=$(echo -n "{\"name\":\"marble2\",\"color\":\"red\",\"size\":50,\"owner\":\"tom\",\"price\":102}" | base64)
-// peer chaincode invoke -C mychannel -n marblesp -c '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
-//
-// export MARBLE=$(echo -n "{\"name\":\"marble3\",\"color\":\"blue\",\"size\":70,\"owner\":\"tom\",\"price\":103}" | base64)
-// peer chaincode invoke -C mychannel -n marblesp -c '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
-//
-// export MARBLE_OWNER=$(echo -n "{\"name\":\"marble2\",\"owner\":\"jerry\"}" | base64)
-// peer chaincode invoke -C mychannel -n marblesp -c '{"Args":["transferMarble"]}' --transient "{\"marble_owner\":\"$MARBLE_OWNER\"}"
+// export TRANSFER=$(echo -n "{\"name\":\"transfer1\",\"description\":\"first transfer\",\"originator\":\"alice\",\"recipient\":\"bob\",\"authorization\":\"auth1\",\"address\":\"file-is-here\",\"encryptionKey\":\"secret\"}" | base64 | tr -d \\n)
+// peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n fileTransfer -c '{"Args":["initFileTransfer"]}' --transient "{\"fileTransfer\":\"$TRANSFER\"}"
 //
 // export MARBLE_DELETE=$(echo -n "{\"name\":\"marble1\"}" | base64)
 // peer chaincode invoke -C mychannel -n marblesp -c '{"Args":["delete"]}' --transient "{\"marble_delete\":\"$MARBLE_DELETE\"}"
 
 // ==== Query marbles, since queries are not recorded on chain we don't need to hide private data in transient map ====
-// peer chaincode query -C mychannel -n marblesp -c '{"Args":["readMarble","marble1"]}'
-// peer chaincode query -C mychannel -n marblesp -c '{"Args":["readMarblePrivateDetails","marble1"]}'
+// peer chaincode query -C mychannel -n fileTransfer -c '{"Args":["readFileTransfer","transfer1"]}'
+// peer chaincode query -C mychannel -n fileTransfer -c '{"Args":["readFileTransferPrivateDetails","transfer1"]}'
 // peer chaincode query -C mychannel -n marblesp -c '{"Args":["getMarblesByRange","marble1","marble4"]}'
 //
 // Rich Query (Only supported if CouchDB is used as state database):
