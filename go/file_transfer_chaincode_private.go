@@ -1,9 +1,3 @@
-/*
-Copyright IBM Corp. All Rights Reserved.
-
-SPDX-License-Identifier: Apache-2.0
-*/
-
 // ====CHAINCODE EXECUTION SAMPLES (CLI) ==================
 
 // ==== Invoke marbles, pass private data as base64 encoded bytes in transient map ====
