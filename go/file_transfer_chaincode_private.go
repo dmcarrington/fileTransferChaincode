@@ -5,8 +5,8 @@
 // export TRANSFER=$(echo -n "{\"name\":\"transfer1\",\"description\":\"first transfer\",\"originator\":\"alice\",\"recipient\":\"bob\",\"authorization\":\"auth1\",\"address\":\"file-is-here\",\"encryptionKey\":\"secret\"}" | base64 | tr -d \\n)
 // peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n fileTransfer -c '{"Args":["initFileTransfer"]}' --transient "{\"fileTransfer\":\"$TRANSFER\"}"
 //
-// export MARBLE_DELETE=$(echo -n "{\"name\":\"marble1\"}" | base64)
-// peer chaincode invoke -C mychannel -n marblesp -c '{"Args":["delete"]}' --transient "{\"marble_delete\":\"$MARBLE_DELETE\"}"
+// export TRANSFER_DELETE=$(echo -n "{\"name\":\"transfer1\"}" | base64)
+// peer chaincode invoke -C mychannel -n fileTransfer -c '{"Args":["delete"]}' --transient "{\"transfer_delete\":\"$TRANSFER_DELETE\"}"
 
 // ==== Query marbles, since queries are not recorded on chain we don't need to hide private data in transient map ====
 // peer chaincode query -C mychannel -n fileTransfer -c '{"Args":["readFileTransfer","transfer1"]}'
@@ -14,8 +14,8 @@
 // peer chaincode query -C mychannel -n marblesp -c '{"Args":["getMarblesByRange","marble1","marble4"]}'
 //
 // Rich Query (Only supported if CouchDB is used as state database):
-//   peer chaincode query -C mychannel -n marblesp -c '{"Args":["queryMarblesByOwner","tom"]}'
-//   peer chaincode query -C mychannel -n marblesp -c '{"Args":["queryMarbles","{\"selector\":{\"owner\":\"tom\"}}"]}'
+//   peer chaincode query -C mychannel -n fileTransfer -c '{"Args":["queryFileTransferByOriginator","tom"]}'
+//   peer chaincode query -C mychannel -n fileTransfer -c '{"Args":["queryTransfers","{\"selector\":{\"owner\":\"tom\"}}"]}'
 
 // INDEXES TO SUPPORT COUCHDB RICH QUERIES
 //
@@ -68,10 +68,10 @@
 // {"index":{"fields":[{"data.size":"desc"},{"data.docType":"desc"},{"data.owner":"desc"}]},"ddoc":"indexSizeSortDoc", "name":"indexSizeSortDesc","type":"json"}
 
 // Rich Query with index design doc and index name specified (Only supported if CouchDB is used as state database):
-//   peer chaincode query -C mychannel -n marblesp -c '{"Args":["queryMarbles","{\"selector\":{\"docType\":\"marble\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}"]}'
+//   peer chaincode query -C mychannel -n fileTransfer -c '{"Args":["queryTransfers","{\"selector\":{\"docType\":\"transfer\",\"originator\":\"Alice\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}"]}'
 
 // Rich Query with index design doc specified only (Only supported if CouchDB is used as state database):
-//   peer chaincode query -C mychannel -n marblesp -c '{"Args":["queryMarbles","{\"selector\":{\"docType\":{\"$eq\":\"marble\"},\"owner\":{\"$eq\":\"tom\"},\"size\":{\"$gt\":0}},\"fields\":[\"docType\",\"owner\",\"size\"],\"sort\":[{\"size\":\"desc\"}],\"use_index\":\"_design/indexSizeSortDoc\"}"]}'
+//   peer chaincode query -C mychannel -n fileTransfer -c '{"Args":["queryTransfers","{\"selector\":{\"docType\":{\"$eq\":\"transfer\"},\"originator\":{\"$eq\":\"alice\"},\"size\":{\"$gt\":0}},\"fields\":[\"docType\",\"originator\",\"size\"],\"sort\":[{\"size\":\"desc\"}],\"use_index\":\"_design/indexSizeSortDoc\"}"]}'
 
 package main
 
@@ -145,9 +145,9 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	case "delete":
 		//delete a file transfer
 		return t.delete(stub, args)
-	case "queryFileTransferByOwner":
+	case "queryFileTransferByOriginator":
 		//find transfer for owner X using rich query
-		return t.queryFileTransferByOwner(stub, args)
+		return t.queryFileTransferByOriginator(stub, args)
 	case "queryTransfers":
 		//find transfers based on an ad hoc rich query
 		return t.queryTransfers(stub, args)
@@ -626,12 +626,12 @@ func (t *SimpleChaincode) accessFile(stub shim.ChaincodeStubInterface, args []st
 // ============================================================================================
 
 // ===== Example: Parameterized rich query =================================================
-// queryFileTransferByOwner queries for transfers based on a passed in Originator.
+// queryFileTransferByOriginator queries for transfers based on a passed in Originator.
 // This is an example of a parameterized query where the query logic is baked into the chaincode,
 // and accepting a single query parameter (owner).
 // Only available on state databases that support rich query (e.g. CouchDB)
 // =========================================================================================
-func (t *SimpleChaincode) queryFileTransferByOwner(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) queryFileTransferByOriginator(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 
 	//   0
 	// "bob"
@@ -651,10 +651,10 @@ func (t *SimpleChaincode) queryFileTransferByOwner(stub shim.ChaincodeStubInterf
 }
 
 // ===== Example: Ad hoc rich query ========================================================
-// queryMarbles uses a query string to perform a query for marbles.
+// queryTransfers uses a query string to perform a query for transfers.
 // Query string matching state database syntax is passed in and executed as is.
 // Supports ad hoc queries that can be defined at runtime by the client.
-// If this is not desired, follow the queryMarblesForOwner example for parameterized queries.
+// If this is not desired, follow the queryTransfersForOwner example for parameterized queries.
 // Only available on state databases that support rich query (e.g. CouchDB)
 // =========================================================================================
 func (t *SimpleChaincode) queryTransfers(stub shim.ChaincodeStubInterface, args []string) pb.Response {

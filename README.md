@@ -33,3 +33,6 @@ peer chaincode invoke -o orderer.example.com:7050 --tls --cafile /opt/gopath/src
 ## TODO
 1) Recipient accessing record leaves trace of having received data.
 2) Use public & private keys of participants to encrypt/decrypt files instead of explicitly including key in on-chain records.
+3) Setup Nodejs functions to interact with the blockchain and link with IPFS.
+4) Merge with docker swarm project to deploy orgs to different VMs.
+5) Create web interface
