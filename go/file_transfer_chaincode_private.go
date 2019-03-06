@@ -90,12 +90,13 @@ type SimpleChaincode struct {
 }
 
 type fileTransfer struct {
-	ObjectType    string `json:"docType"` //docType is used to distinguish the various types of objects in state database
-	Name          string `json:"name"`    //the fieldtags are needed to keep case from bouncing around
-	Description   string `json:"description"`
-	Originator    string `json:"originator"`
-	Recipient     string `json:"recipient"`
-	Authorization string `json:"authorization"`
+	ObjectType      string `json:"docType"` //docType is used to distinguish the various types of objects in state database
+	Name            string `json:"name"`    //the fieldtags are needed to keep case from bouncing around
+	Description     string `json:"description"`
+	Originator      string `json:"originator"`
+	Recipient       string `json:"recipient"`
+	Authorization   string `json:"authorization"`
+	HasBeenAccessed bool   `json:hasBeenAccessed`
 }
 
 type fileTransferPrivateDetails struct {
@@ -153,6 +154,9 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	/*case "getMarblesByRange":
 	//get marbles based on range query
 	return t.getMarblesByRange(stub, args)*/
+	case "accessFile":
+		// get the file and mark is as having been accessed by the recipient
+		return t.accessFile(stub, args)
 	default:
 		//error
 		fmt.Println("invoke did not find func: " + function)
@@ -235,12 +239,13 @@ func (t *SimpleChaincode) initFileTransfer(stub shim.ChaincodeStubInterface, arg
 
 	// ==== Create transfer object, marshal to JSON, and save to state ====
 	transfer := &fileTransfer{
-		ObjectType:    "fileTransfer",
-		Name:          transferInput.Name,
-		Description:   transferInput.Description,
-		Originator:    transferInput.Originator,
-		Recipient:     transferInput.Recipient,
-		Authorization: transferInput.Authorization,
+		ObjectType:      "fileTransfer",
+		Name:            transferInput.Name,
+		Description:     transferInput.Description,
+		Originator:      transferInput.Originator,
+		Recipient:       transferInput.Recipient,
+		Authorization:   transferInput.Authorization,
+		HasBeenAccessed: false,
 	}
 	transferJSONasBytes, err := json.Marshal(transfer)
 	if err != nil {
@@ -479,6 +484,75 @@ func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string
 	fmt.Println("- end transferMarble (success)")
 	return shim.Success(nil)
 }*/
+
+// ===========================================================
+// Record that a file has been accessed by the recipient by setting the HasBeenAccessed flag
+// ===========================================================
+func (t *SimpleChaincode) accessFile(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+
+	fmt.Println("- start accessFile")
+
+	type fileAccessTransientInput struct {
+		Name            string `json:"name"`
+		HasBeenAccessed bool   `json:"hasBeenAccessed"`
+	}
+
+	if len(args) != 0 {
+		return shim.Error("Incorrect number of arguments. Private transfer data must be passed in transient map.")
+	}
+
+	transMap, err := stub.GetTransient()
+	if err != nil {
+		return shim.Error("Error getting transient: " + err.Error())
+	}
+
+	if _, ok := transMap["transfer_flag"]; !ok {
+		return shim.Error("transfer_flag must be a key in the transient map")
+	}
+
+	if len(transMap["transfer_flag"]) == 0 {
+		return shim.Error("transfer_flag value in the transient map must be a non-empty JSON string")
+	}
+
+	var accessTransferInput fileAccessTransientInput
+	err = json.Unmarshal(transMap["transfer_flag"], &accessTransferInput)
+	if err != nil {
+		return shim.Error("Failed to decode JSON of: " + string(transMap["transfer_flag"]))
+	}
+
+	if len(accessTransferInput.Name) == 0 {
+		return shim.Error("name field must be a non-empty string")
+	}
+
+	transferAsBytes, err := stub.GetPrivateData("collectionFileTransfer", accessTransferInput.Name)
+	if err != nil {
+		return shim.Error("Failed to get transfer:" + err.Error())
+	} else if transferAsBytes == nil {
+		return shim.Error("Transfer does not exist: " + accessTransferInput.Name)
+	}
+
+	accessToTransfer := fileTransfer{}
+	err = json.Unmarshal(transferAsBytes, &accessToTransfer) //unmarshal it aka JSON.parse()
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	if accessToTransfer.HasBeenAccessed == true {
+		// The file has already been accessed.
+		// TODO: do we need to record the number of times it has been accessed and when?
+	} else {
+		// mark the file as having been accessed
+		accessToTransfer.HasBeenAccessed = true
+	}
+
+	transferJSONasBytes, _ := json.Marshal(accessToTransfer)
+	err = stub.PutPrivateData("collectionFileTransfer", accessToTransfer.Name, transferJSONasBytes) //rewrite the marble
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	fmt.Println("- end accessFile (success)")
+	return shim.Success(nil)
+}
 
 // ===========================================================================================
 // getMarblesByRange performs a range query based on the start and end keys provided.
